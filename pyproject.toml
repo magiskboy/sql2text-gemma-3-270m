@@ -1,0 +1,16 @@
+[project]
+name = "gemma-3-270m-sql-to-text"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.3.1",
+    "datasets>=4.4.1",
+    "matplotlib>=3.10.7",
+    "peft>=0.18.0",
+    "sqlglot>=27.29.0",
+    "tensorboardx>=2.6.4",
+    "transformers>=4.57.1",
+    "trl>=0.25.1",
+]
