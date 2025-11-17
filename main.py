@@ -73,6 +73,12 @@ def main():
     default='adamw_torch_fused',
     help='Tên optimizer sử dụng (vd: adamw_torch, adamw_torch_fused...).'
 )
+@click.option(
+    '--visualization-path', 
+    type=click.STRING, 
+    default='./training-log.png',
+    help='Tên optimizer sử dụng (vd: adamw_torch, adamw_torch_fused...).'
+)
 def train(
     lr: float,
     epoch: int,
@@ -84,6 +90,7 @@ def train(
     hf_token: str,
     checkpoint_dir: str,
     optimizer: str,
+    visualization_path: str,
 ):
     import torch
     from trl.trainer.sft_config import SFTConfig
@@ -148,6 +155,8 @@ def train(
 
     trainer.train()
     trainer.save_model()
+
+    utils.visualize_train_log(trainer, visualization_path)
 
 
 @main.command()

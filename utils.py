@@ -2,6 +2,8 @@ import re
 from typing import Optional
 from datetime import datetime
 import sqlglot
+import matplotlib.pyplot as plt
+from trl.trainer.sft_trainer import SFTTrainer
 
 
 def setup_hf(hf_token: str):
@@ -104,4 +106,22 @@ def normalize_sql(text: str) -> str:
         return sqlglot.parse_one(sql).sql(pretty=False)
     except Exception:
         return sql
+
+
+def visualize_train_log(trainer: SFTTrainer, filename: str):
+    log_history = trainer.state.log_history
+
+    train_losses = [log["loss"] for log in log_history if "loss" in log]
+    epoch_train = [log["epoch"] for log in log_history if "loss" in log]
+    eval_losses = [log["eval_loss"] for log in log_history if "eval_loss" in log]
+    epoch_eval = [log["epoch"] for log in log_history if "eval_loss" in log]
+
+    plt.plot(epoch_train, train_losses, label="Training Loss")
+    plt.plot(epoch_eval, eval_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(filename)
 
