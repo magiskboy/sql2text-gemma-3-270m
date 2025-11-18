@@ -5,9 +5,6 @@ from tqdm import tqdm
 import utils
 
 
-GEMMA3_MODEL_ID = 'google/gemma-3-270m-it'
-
-
 @click.group
 def main():
     ...
@@ -233,6 +230,12 @@ def train(
     type=click.INT,
     default=1_000,
 )
+@click.option(
+    '--base-model', 
+    type=click.STRING, 
+    default='google/gemma-3-270m-it', 
+    help='ID của base model hoặc directory của checkpoint'
+)
 def eval(
     hf_token: str,
     checkpoint_dir: str,
@@ -240,6 +243,7 @@ def eval(
     report_dir: str,
     sql_complexity: str,
     dataset_size: int,
+    base_model: str,
 ):
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
@@ -266,7 +270,7 @@ def eval(
         device_map="auto",
         attn_implementation="eager"
     )
-    tokenizer = AutoTokenizer.from_pretrained(GEMMA3_MODEL_ID)
+    tokenizer = AutoTokenizer.from_pretrained(base_model)
 
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
