@@ -20,7 +20,6 @@ def main():
     default='google/gemma-3-270m-it', 
     help='ID của base model hoặc directory của checkpoint'
 )
-@main.command()
 @click.option(
     '--lr', 
     type=click.FLOAT, 
