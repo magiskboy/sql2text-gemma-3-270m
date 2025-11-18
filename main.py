@@ -5,7 +5,7 @@ from tqdm import tqdm
 import utils
 
 
-base_model = 'google/gemma-3-270m-it'
+GEMMA3_MODEL_ID = 'google/gemma-3-270m-it'
 
 
 @click.group
@@ -13,6 +13,13 @@ def main():
     ...
 
 
+@main.command()
+@click.option(
+    '--base-model', 
+    type=click.STRING, 
+    default='google/gemma-3-270m-it', 
+    help='ID của base model hoặc directory của checkpoint'
+)
 @main.command()
 @click.option(
     '--lr', 
@@ -23,7 +30,7 @@ def main():
 @click.option(
     '--epoch', 
     type=click.INT, 
-    default=5, 
+    default=3, 
     help='Số lượng epoch để train.'
 )
 @click.option(
@@ -79,6 +86,16 @@ def main():
     default='./training-log.png',
     help='Tên optimizer sử dụng (vd: adamw_torch, adamw_torch_fused...).'
 )
+@click.option(
+    '--sql-complexity',
+    type=click.STRING,
+    default=None,
+)
+@click.option(
+    '--dataset-size',
+    type=click.INT,
+    default=10_000,
+)
 def train(
     lr: float,
     epoch: int,
@@ -91,6 +108,9 @@ def train(
     checkpoint_dir: str,
     optimizer: str,
     visualization_path: str,
+    base_model: str,
+    sql_complexity: str,
+    dataset_size: int,
 ):
     import torch
     from trl.trainer.sft_config import SFTConfig
@@ -101,7 +121,18 @@ def train(
     if hf_token:
         utils.setup_hf(hf_token)
 
-    dataset = utils.load_train_validate_dataset(validation_size=validation_size)
+    if sql_complexity:
+        dataset = utils.load_train_validate_dataset(
+            n=dataset_size,
+            validation_size=validation_size,
+            filter_fn=utils.filter_by_complexity(sql_complexity),
+        )
+    else:
+        dataset = utils.load_train_validate_dataset(
+            n=dataset_size,
+            validation_size=validation_size,
+        )
+
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
         torch_dtype="auto",
@@ -206,16 +237,16 @@ def eval(
         device_map="auto",
         attn_implementation="eager"
     )
-    tokenizer = AutoTokenizer.from_pretrained(base_model)
+    tokenizer = AutoTokenizer.from_pretrained(GEMMA3_MODEL_ID)
 
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
     # Warm up time
     item = dataset[0]
-    prompt = pipe.tokenizer.apply_chat_template(item["messages"][:2], tokenize=False, add_generation_prompt=True) #type:ignore
+    prompt = pipe.tokenizer.apply_chat_template(item["messages"][:1], tokenize=False, add_generation_prompt=True) #type:ignore
     outputs = pipe(prompt, max_new_tokens=max_tokens, disable_compile=True) #type:ignore
     print(f'Prompt\n{prompt}')
-    print(f'Expected value\n{item["messages"][2]["content"]}')
+    print(f'Expected value\n{item["messages"][1]["content"]}')
     print(f'Generated\n{outputs[0]["generated_text"][len(prompt):].strip()}')
 
 
@@ -226,8 +257,8 @@ def eval(
     }
 
     for item in tqdm(dataset, desc='Generate'):
-        expected = item["messages"][2]["content"] #type:ignore
-        prompt = pipe.tokenizer.apply_chat_template(item["messages"][:2], tokenize=False, add_generation_prompt=True) #type:ignore
+        expected = item["messages"][1]["content"] #type:ignore
+        prompt = pipe.tokenizer.apply_chat_template(item["messages"][:1], tokenize=False, add_generation_prompt=True) #type:ignore
 
         try:
             outputs = pipe(prompt, max_new_tokens=4096, disable_compile=True) #type:ignore

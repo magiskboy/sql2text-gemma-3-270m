@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Any, Callable, Optional
 from datetime import datetime
 import sqlglot
 import matplotlib.pyplot as plt
@@ -12,7 +12,6 @@ def setup_hf(hf_token: str):
 
 
 def create_conversation(sample):
-    system_message = """You are a text to SQL query translator. Users will ask you questions in English and you will generate a SQL query based on the provided SCHEMA."""
     user_prompt = """Given the <USER_QUERY> and the <SCHEMA>, generate the corresponding SQL command to retrieve the desired data, considering the query's syntax, semantics, and schema constraints.
     
     <SCHEMA>
@@ -26,18 +25,19 @@ def create_conversation(sample):
     
     return {
       "messages": [
-        {"role": "system", "content": system_message},
         {"role": "user", "content": user_prompt.format(question=sample["sql_prompt"], context=sample["sql_context"])},
         {"role": "assistant", "content": sample["sql"]}
       ]
     }
-    
 
-def load_train_validate_dataset(n: Optional[int] = 10_000, validation_size: Optional[float] = 0.2):
+
+def load_train_validate_dataset(n: Optional[int] = 10_000, validation_size: Optional[float] = 0.2, filter_fn: Optional[Callable] = None):
     from datasets import load_dataset
 
     dataset_id = 'philschmid/gretel-synthetic-text-to-sql'
     dataset = load_dataset(dataset_id, split='train')
+    if filter_fn:
+        dataset = dataset.filter(filter_fn)
     dataset = dataset.select(range(n)) #type:ignore
     dataset = dataset.map(create_conversation, remove_columns=dataset.features, batched=False) #type:ignore
 
@@ -124,4 +124,11 @@ def visualize_train_log(trainer: SFTTrainer, filename: str):
     plt.legend()
     plt.grid(True)
     plt.savefig(filename)
+
+
+def filter_by_complexity(complexity: str) -> Callable[[Any], bool]:
+    def filter_fn(sample) -> bool:
+        return sample['sql_complexity'] == complexity
+
+    return filter_fn
 
