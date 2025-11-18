@@ -223,11 +223,23 @@ def train(
     default='report',
     help='Thư mục đầu ra để lưu kết quả đánh giá và báo cáo.'
 )
+@click.option(
+    '--sql-complexity',
+    type=click.STRING,
+    default=None,
+)
+@click.option(
+    '--dataset-size',
+    type=click.INT,
+    default=1_000,
+)
 def eval(
     hf_token: str,
     checkpoint_dir: str,
     max_tokens: int,
     report_dir: str,
+    sql_complexity: str,
+    dataset_size: int,
 ):
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
@@ -238,7 +250,15 @@ def eval(
     if hf_token:
         utils.setup_hf(hf_token)
 
-    dataset = utils.load_test_dataset()
+    if sql_complexity:
+        dataset = utils.load_test_dataset(
+            n=dataset_size,
+            filter_fn=utils.filter_by_complexity(sql_complexity),
+        )
+    else:
+        dataset = utils.load_test_dataset(
+            n=dataset_size
+        )
 
     model = AutoModelForCausalLM.from_pretrained(
         checkpoint_dir,

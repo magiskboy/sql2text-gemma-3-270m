@@ -44,11 +44,13 @@ def load_train_validate_dataset(n: Optional[int] = 10_000, validation_size: Opti
     return dataset.train_test_split(test_size=validation_size, shuffle=False)
 
 
-def load_test_dataset(n: Optional[int] = 1000):
+def load_test_dataset(n: Optional[int] = 1000, filter_fn: Optional[Callable] = None):
     from datasets import load_dataset
 
     dataset_id = 'philschmid/gretel-synthetic-text-to-sql'
     dataset = load_dataset(dataset_id, split='test')
+    if filter_fn:
+        dataset = dataset.filter(filter_fn)
 
     return dataset.select(range(n)).map(create_conversation, remove_columns=dataset.features, batched=False) #type:ignore
 
