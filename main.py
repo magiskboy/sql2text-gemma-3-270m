@@ -80,6 +80,11 @@ def main():
     help='Tên optimizer sử dụng (vd: adamw_torch, adamw_torch_fused...).'
 )
 @click.option(
+    '--lora/--no-lora', 
+    type=click.BOOL, 
+    default=True,
+)
+@click.option(
     '--visualization-path', 
     type=click.STRING, 
     default='./training-log.png',
@@ -110,6 +115,7 @@ def train(
     base_model: str,
     sql_complexity: str,
     dataset_size: int,
+    lora: bool,
 ):
     import torch
     from trl.trainer.sft_config import SFTConfig
@@ -142,14 +148,17 @@ def train(
 
     torch_dtype = model.dtype
 
-    peft_config = LoraConfig(
-        task_type="CAUSAL_LM",
-        r=lora_rank,
-        lora_alpha=lora_alpha,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"] if lora_modules is None else lora_modules.split(','),
-        lora_dropout=lora_dropout,
-        bias="none",
-    )
+    if lora:
+        peft_config = LoraConfig(
+            task_type="CAUSAL_LM",
+            r=lora_rank,
+            lora_alpha=lora_alpha,
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"] if lora_modules is None else lora_modules.split(','),
+            lora_dropout=lora_dropout,
+            bias="none",
+        )
+    else:
+        peft_config = None
 
     args = SFTConfig(
         output_dir=checkpoint_dir,
