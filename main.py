@@ -153,7 +153,7 @@ def train(
 
     args = SFTConfig(
         output_dir=checkpoint_dir,
-        max_length=512,                         # max sequence length for model and packing of the dataset
+        max_length=2048,                         # max sequence length for model and packing of the dataset
         packing=False,                          # Groups multiple samples in the dataset into a single sequence
         num_train_epochs=epoch,
         per_device_train_batch_size=4,
@@ -171,7 +171,8 @@ def train(
         dataset_kwargs={
             "add_special_tokens": False,
             "append_concat_token": True,
-        }
+        },
+        warmup_steps=500,
     )
 
     trainer = SFTTrainer(
