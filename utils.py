@@ -1,9 +1,14 @@
 import re
+import math
+from collections import Counter
 from typing import Any, Callable, Optional
 from datetime import datetime
 import sqlglot
 import matplotlib.pyplot as plt
 from trl.trainer.sft_trainer import SFTTrainer
+import tiktoken
+from datasets import Dataset
+import numpy as np
 
 
 def setup_hf(hf_token: str):
@@ -134,3 +139,58 @@ def filter_by_complexity(complexity: str) -> Callable[[Any], bool]:
 
     return filter_fn
 
+
+def token_entropy(dataset: Dataset, encoding_name: str, columns: Optional[list[str]] = None, sensitive: Optional[bool] = True) -> tuple[int, float]:
+    enc = tiktoken.get_encoding(encoding_name)
+    counter = Counter()
+    if columns is not None:
+        dataset = dataset.select_columns(columns)
+
+    for sample in dataset:
+        for item in sample.values(): #type:ignore
+            counter.update(enc.encode(item if sensitive else item.lower()))
+
+    h = 0
+    total = sum(counter.values())
+    for _, freq in counter.items():
+        p = freq / total
+        h -= p * math.log2(p)
+
+    return len(counter.keys()), h
+
+
+def token_cross_entropy(
+    dataset: Dataset,
+    encoding_name: str,
+    columns: Optional[list[str]] = None,
+    sensitive: Optional[bool] = True,
+) -> tuple[int, Any]:
+    enc = tiktoken.get_encoding(encoding_name)
+    counter = Counter()
+    if columns is not None:
+        dataset = dataset.select_columns(columns)
+
+    for sample in dataset:
+        for item in sample.values(): #type:ignore
+            counter.update(enc.encode(item if sensitive else item.lower()))
+
+    total = sum(counter.values())
+    p = []
+    for _, freq in counter.items():
+        p.append(freq / total)
+    p.sort()
+
+    ce = []
+    for px in p:
+        c = []
+        for py in p:
+            c.append(-py * math.log2(px))
+        ce.append(c)
+
+    ce = np.array(ce)
+
+    return len(counter.keys()), ce
+
+
+def log_contrast(matrix, eps=1e-6):
+    return np.log(matrix + eps)

@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Literal
 import click
 from tqdm import tqdm
 import utils
@@ -97,6 +98,16 @@ def main():
     type=click.INT,
     default=10_000,
 )
+@click.option(
+    '--loss-type',
+    type=click.Choice(('nll', 'dft')),
+    default='nll',
+)
+@click.option(
+    '--resume',
+    type=click.BOOL,
+    default=False,
+)
 def train(
     lr: float,
     epoch: int,
@@ -113,6 +124,8 @@ def train(
     sql_complexity: str,
     dataset_size: int,
     lora: bool,
+    loss_type: Literal['dft', 'nll'],
+    resume: bool,
 ):
     import torch
     from trl.trainer.sft_config import SFTConfig
@@ -179,6 +192,7 @@ def train(
             "append_concat_token": True,
         },
         warmup_steps=500,
+        loss_type=loss_type,
     )
 
     trainer = SFTTrainer(
@@ -190,7 +204,7 @@ def train(
         peft_config=peft_config,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume)
     trainer.save_model()
 
     utils.visualize_train_log(trainer, visualization_path)
