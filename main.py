@@ -204,8 +204,13 @@ def train(
         peft_config=peft_config,
     )
 
-    trainer.train(resume_from_checkpoint=resume)
+    if resume:
+        trainer.train(resume_from_checkpoint=checkpoint_dir)
+    else:
+        trainer.train()
+
     trainer.save_model()
+    trainer.save_state()
 
     utils.visualize_train_log(trainer, visualization_path)
 
